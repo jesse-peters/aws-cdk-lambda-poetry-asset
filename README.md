@@ -1,0 +1,2 @@
+# AWS CDK Lambda Asset
+
