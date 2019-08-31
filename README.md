@@ -1,3 +1,6 @@
+[![pipeline status](https://gitlab.com/josef.stach/aws-cdk-lambda-asset/badges/master/pipeline.svg)](https://gitlab.com/josef.stach/aws-cdk-lambda-asset/commits/master)
+[![coverage report](https://gitlab.com/josef.stach/aws-cdk-lambda-asset/badges/master/coverage.svg)](https://gitlab.com/josef.stach/aws-cdk-lambda-asset/commits/master)
+
 # AWS CDK Lambda Asset
 
 ## About
