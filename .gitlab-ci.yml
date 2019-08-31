@@ -1,4 +1,4 @@
-image: registry.gitlab.com/josef.stach/aws-cdk-lambda-asset/ci-lambda
+image: registry.gitlab.com/josef.stach/aws-cdk-lambda-asset/ci-lambda-cdk
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
