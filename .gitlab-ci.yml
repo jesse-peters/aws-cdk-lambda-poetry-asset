@@ -8,12 +8,6 @@ variables:
 before_script:
   - pip install -U pip
 
-cache:
-  key: ${CI_JOB_NAME}
-  paths:
-    - .cache/pip
-    - ${XDG_CACHE_HOME}
-
 stages:
   - build
   - test

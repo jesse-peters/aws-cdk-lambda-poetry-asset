@@ -69,7 +69,7 @@ class LambdaPackaging:
         self.requirements_dir.mkdir(parents=True)
 
         print(f'Exporting poetry dependencies: {self.requirements_txt}')
-        result = os.system(f'poetry export --without-hashes --format requirements.txt --with-credentials --output {self.requirements_txt}')
+        result = os.system(f'poetry export --without-hashes --format requirements.txt --output {self.requirements_txt}')
         if result != 0:
             raise EnvironmentError('Version of your poetry is not compatible - please update to 1.0.0b1 or newer')
 
