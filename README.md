@@ -49,6 +49,9 @@ class MyStack(core.Stack):
         )
 ```
 
+## License
+This code is released under MIT license. Developed at [Bulletproof AI](https://www.bulletproof.ai).
+
 ## Setup
 
 #### [Install poetry](https://github.com/sdispater/poetry#installation)
