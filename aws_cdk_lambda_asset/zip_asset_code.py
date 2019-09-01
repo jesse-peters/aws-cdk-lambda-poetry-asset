@@ -11,6 +11,13 @@ import requests
 from aws_cdk.aws_lambda import AssetCode
 
 
+def is_linux() -> bool:
+    """
+    :return: True if running on Linux. False otherwise.
+    """
+    return platform.system().lower() == 'linux'
+
+
 class ZipAssetCode(AssetCode):
     """
     CDK AssetCode which builds lambda function and produces a ZIP file with dependencies.
@@ -74,7 +81,7 @@ class LambdaPackaging:
             raise EnvironmentError('Version of your poetry is not compatible - please update to 1.0.0b1 or newer')
 
     def _build_lambda(self) -> None:
-        if self._is_linux():
+        if is_linux():
             self._build_natively()
         else:
             self._build_in_docker()
@@ -126,13 +133,6 @@ class LambdaPackaging:
         zip_file_path = (self.work_dir / self._zip_file).resolve()
         print(f'Packaging application into {zip_file_path}.zip')
         shutil.make_archive(str(zip_file_path), 'zip', root_dir=str(self.build_dir), verbose=True)
-
-    @staticmethod
-    def _is_linux() -> bool:
-        """
-        :return: True if running on Linux. False otherwise.
-        """
-        return platform.system().lower() == 'linux'
 
     def _remove_bundled_files(self) -> None:
         """
