@@ -19,6 +19,17 @@ The construct is aware of libraries bundled in the AWS lambda runtime and automa
 It also counts with compiled C dependencies such as NumPy and takes care of library stripping.  
 
 ## Usage
+Suppose your project's directory structure looks like this:
+```
+my-project
+├── business_logic
+│   └── backend.py
+└── functions
+    └── my_lambda.py
+``` 
+
+Then your stack would be:
+
 ```python
 from pathlib import Path
 from aws_cdk import core, aws_lambda
