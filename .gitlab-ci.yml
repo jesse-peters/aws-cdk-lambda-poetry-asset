@@ -1,8 +1,5 @@
 image: registry.gitlab.com/josef.stach/aws-cdk-lambda-asset/ci-lambda-cdk
 
-include:
-  template: Dependency-Scanning.gitlab-ci.yml
-
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   XDG_CACHE_HOME: "$CI_PROJECT_DIR/.cache/poetry"
