@@ -8,9 +8,6 @@ variables:
   XDG_CACHE_HOME: "$CI_PROJECT_DIR/.cache/poetry"
   PYTHONPATH: ${CI_PROJECT_DIR}
 
-before_script:
-  - pip install -U pip
-
 stages:
   - build
   - test
@@ -18,7 +15,7 @@ stages:
 code_quality:
   stage: test
   script: |
-    pip install -U flake8 flake8-builtins flake8-bandit flake8-codeclimate flake8-mypy pep8-naming flake8-comprehensions flake8-import-order
+    pip install -U pip flake8 flake8-builtins flake8-bandit flake8-codeclimate flake8-mypy pep8-naming flake8-comprehensions flake8-import-order
     python -m flake8 --format=codeclimate --exit-zero ${CI_PROJECT_NAME//-/_} | \
     python -c 'import fileinput; print("[",end="");print(",".join([l.strip() for l in fileinput.input()]));print("]",end="")' > gl-code-quality-report.json
   artifacts:
@@ -32,6 +29,7 @@ code_quality:
 
 test:
   script: |
+    pip install -U pip
     poetry install
     poetry run pytest --cov-report term-missing --cov=${CI_PROJECT_NAME//-/_} tests
   artifacts:
