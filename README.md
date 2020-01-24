@@ -56,7 +56,7 @@ This code is released under MIT license. Developed at [Bulletproof AI](https://w
 
 #### [Install poetry](https://github.com/sdispater/poetry#installation)
 ```commandline
-curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python - -p
+pip install poetry
 ```
 
 #### Install dependencies
