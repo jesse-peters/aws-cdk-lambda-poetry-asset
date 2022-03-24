@@ -1,0 +1,43 @@
+name: Branch Test
+
+on:
+    pull_request:
+        types: [ assigned, opened, synchronize, reopened ]
+
+jobs:
+    configure-python:
+        name: Run tests
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - name: ↗️ Check out repository
+              uses: actions/checkout@v2
+
+            # Set up Python
+            - name: Set up Python env
+              uses: actions/setup-python@v2
+              with:
+                  python-version: 3.9
+
+            - name: 🐍 Set up cache 📦
+              uses: actions/cache@v3
+              with:
+                  path: |
+                      .venv
+                      ~/.local
+                  key: ${{ runner.os }}-3.9-poetry-${{ hashFiles('**/poetry.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-3.9-poetry-
+
+            - name: Bootstrap poetry 🥾
+              run: |
+                  curl -sL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py \
+                    | python - -y
+
+            - name: Install Python dependencies
+              run: |
+                  poetry install
+
+            - name: Run tests
+              run: |
+                  poetry run pytest --cov-report term-missing --cov=${CI_PROJECT_NAME//-/_} tests
