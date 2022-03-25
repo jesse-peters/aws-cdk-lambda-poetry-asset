@@ -57,6 +57,7 @@ class ZipAssetCode(AssetCode):
 
 class LambdaPackaging:
     """
+    BUILD_IMAGE - Docker image to use when building packages.
     EXCLUDE_DEPENDENCIES - List of libraries already included in the lambda runtime environment. No need to package these.
     EXCLUDE_FILES - List of files not required and therefore safe to be removed to save space.
     """
