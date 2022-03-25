@@ -21,6 +21,7 @@ The construct is aware of libraries bundled in the AWS lambda runtime and automa
 It also counts with compiled C dependencies such as NumPy and takes care of library stripping.
 
 By setting the `create_file_if_exists` to `False` you can use it with a caching system, like Github Actions `actions/cache@v3`. It will only run the build if the file doesnt exist at the output path already.
+
 ## Usage
 Suppose your project's directory structure looks like this:
 ```
@@ -56,11 +57,6 @@ class MyStack(core.Stack):
             runtime=aws_lambda.Runtime.PYTHON_3_9
         )
 ```
-
-### Poetry file hash
-## License
-This code is released under MIT license.
-
 ## Setup
 
 #### [Install poetry](https://github.com/sdispater/poetry#installation)
@@ -78,3 +74,30 @@ Start docker first.
 ```commandline
 poetry run pytest --cov-report term-missing --cov=aws_cdk_lambda_poetry_asset tests
 ```
+
+
+## Create a release
+
+This project will automatically create a github release when a PR is merged into the `main` branch. The title of the PR must adhere to [angular commit message format](https://github.com/angular/angular/blob/master/CONTRIBUTING.md#-commit-message-format) in order for it to calculate a new version number.
+
+### Example PR titles:
+
+`feat: mindblowing feature`
+
+`fix: bug thats been around for ever`
+
+### Types
+From angular documentation
+
+Must be one of the following:
+
+* **build**: Changes that affect the build system or external dependencies (example scopes: gulp, broccoli, npm)
+* **ci**: Changes to our CI configuration files and scripts (example scopes: Circle, BrowserStack, SauceLabs)
+* **docs**: Documentation only changes
+* **feat**: A new feature
+* **fix**: A bug fix
+* **perf**: A code change that improves performance
+* **refactor**: A code change that neither fixes a bug nor adds a feature
+* **test**: Adding missing tests or correcting existing tests
+## License
+This code is released under MIT license.
