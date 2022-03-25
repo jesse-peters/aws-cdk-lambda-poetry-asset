@@ -5,8 +5,8 @@ description = "AWS CDK construct for packaging lambda functions with dependencie
 license = "MIT"
 authors = ["Jesse Peters <jesse@resist.bot>","Josef Stach <josef.stach@bulletproof.ai>"]
 readme = "README.md"
-repository = "https://github.com/jesse-peters/aws-cdk-lambda-asset"
-keywords = ["AWS", "CDK", "Lambda", "Construct"]
+repository = "https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset"
+keywords = ["AWS", "CDK", "Lambda", "Construct", "Poetry"]
 
 [tool.black]
 line-length = 88
