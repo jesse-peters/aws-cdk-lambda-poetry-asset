@@ -23,7 +23,7 @@ def prepare_workspace(path: Path) -> List[str]:
 
          [tool.poetry.dependencies]
          python = "^3.9"
-         boto3 = "*"
+         boto3 = "^1.9"
          """
     )
 
