@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.3 (2022-03-25)
+### Fix
+* Git link and docs ([#4](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/4)) ([`48b5ee3`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/48b5ee358782e7ee868e067ba1594f2b201556c8))
+
 ## v0.2.2 (2022-03-25)
 ### Fix
 * Cleanup setup and set pypi to true ([#3](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/3)) ([`2e036cf`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/2e036cf7a4e6263bf85f3ca77f9364255b5c294d))
