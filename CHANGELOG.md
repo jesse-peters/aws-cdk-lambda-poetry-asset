@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.2 (2022-03-25)
+### Fix
+* Cleanup setup and set pypi to true ([#3](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/3)) ([`2e036cf`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/2e036cf7a4e6263bf85f3ca77f9364255b5c294d))
+
 ## v0.2.1 (2022-03-25)
 ### Fix
 * Missing dependencies on setup.py ([#2](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/2)) ([`663f4a7`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/663f4a7fa6d23f144b6cbfb428a90b276efa9436))
