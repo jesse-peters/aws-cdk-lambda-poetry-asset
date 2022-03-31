@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.4 (2022-03-31)
+### Fix
+* Requirements need to end up in python dir ([#6](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/6)) ([`4303fb3`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/4303fb381dfd21e34f260297863465428dac1c5c))
+
+### Documentation
+* Remove gl icons ([#5](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/5)) ([`a66bdde`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/a66bdde51ad4f67b2263394168fb97c84b9a85b5))
+
 ## v0.2.3 (2022-03-25)
 ### Fix
 * Git link and docs ([#4](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/4)) ([`48b5ee3`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/48b5ee358782e7ee868e067ba1594f2b201556c8))
