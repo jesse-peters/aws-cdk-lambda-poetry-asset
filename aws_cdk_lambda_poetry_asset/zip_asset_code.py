@@ -174,7 +174,7 @@ class LambdaPackaging:
         logging.info(
             f"Moving required dependencies to the build directory: {self.build_dir}"
         )
-        if self.layer_dir:
+        if self.layer_requirements_dir:
             output_dir = self.build_dir / self.layer_requirements_dir
             output_dir.mkdir(parents=True)
         else:
