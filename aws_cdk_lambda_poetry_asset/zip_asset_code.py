@@ -37,6 +37,7 @@ class ZipAssetCode(AssetCode):
     ) -> None:
         """
         :param include: List of packages to include in the lambda archive.
+        :param work_dir: Project working directory.
         :param file_name: Lambda ZIP archive name.
         :param create_file_if_exists: Create and overwrite the existing output file.
         :param use_docker_non_linux: Use docker on a non-linux environment.
@@ -57,7 +58,6 @@ class ZipAssetCode(AssetCode):
 
 class LambdaPackaging:
     """
-    BUILD_IMAGE - Docker image to use when building packages.
     EXCLUDE_DEPENDENCIES - List of libraries already included in the lambda runtime environment. No need to package these.
     EXCLUDE_FILES - List of files not required and therefore safe to be removed to save space.
     """
@@ -87,6 +87,7 @@ class LambdaPackaging:
         self.work_dir = work_dir
         self.build_dir = self.work_dir / ".build"
         self.requirements_dir = self.build_dir / "requirements"
+        self.layer_requirements_dir = Path("python/lib/python3.9/site-packages")
         self.requirements_txt = self.requirements_dir / "requirements.txt"
         self.use_docker_non_linux = use_docker_non_linux
         self.create_file_if_exists = create_file_if_exists
@@ -173,11 +174,18 @@ class LambdaPackaging:
         logging.info(
             f"Moving required dependencies to the build directory: {self.build_dir}"
         )
+        if self.layer_dir:
+            output_dir = self.build_dir / self.layer_requirements_dir
+            output_dir.mkdir(parents=True)
+        else:
+            output_dir = self.build_dir
         for req_dir in self.requirements_dir.glob("*"):
-            shutil.move(str(req_dir), str(self.build_dir))
+            shutil.move(str(req_dir), str(output_dir))
+
         shutil.rmtree(self.requirements_dir, ignore_errors=True)
 
         logging.info("Copying 'include' resources:")
+
         for include_path in self._include_paths:
             logging.info(f"    -  {(Path.cwd() / include_path).resolve()}")
             os.system(f"cp -R {include_path} {self.build_dir}")
