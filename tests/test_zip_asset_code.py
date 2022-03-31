@@ -53,12 +53,13 @@ def test_packaging_linux(tmp_path, monkeypatch):
     ).package()
 
     assert sorted(next(os.walk(str(tmp_path / ".build")))[1]) == [
-        "bin",
-        "dateutil",
         "product_1",
         "product_2",
-        "urllib3",
+        "python",
     ]
+    assert sorted(
+        next(os.walk(str(tmp_path / ".build/python/lib/python3.9/site-packages")))[1]
+    ) == ["bin", "dateutil", "urllib3"]
     assert asset.exists()
     assert asset.is_file()
     zipfile.ZipFile(asset)
@@ -80,11 +81,9 @@ def test_packaging_not_linux(tmp_path, monkeypatch):
     ).package()
 
     assert sorted(next(os.walk(str(tmp_path / ".build")))[1]) == [
-        "bin",
-        "dateutil",
         "product_1",
         "product_2",
-        "urllib3",
+        "python",
     ]
     assert asset.exists()
     assert asset.is_file()
