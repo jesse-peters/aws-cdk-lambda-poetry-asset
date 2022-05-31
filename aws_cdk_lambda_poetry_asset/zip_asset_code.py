@@ -33,23 +33,27 @@ class ZipAssetCode(AssetCode):
         work_dir: Path,
         file_name: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
-        use_docker_non_linux: bool = True,
+        use_docker: bool = True,
         docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
+        docker_tags: list[str] = [],
+        docker_platforms: list[str] = ["linux/amd64"],
     ) -> None:
         """
         :param include: List of packages to include in the lambda archive.
         :param work_dir: Project working directory.
         :param file_name: Lambda ZIP archive name.
         :param create_file_if_exists: Create and overwrite the existing output file.
-        :param use_docker_non_linux: Use docker on a non-linux environment.
+        :param use_docker: Use docker on a non-linux environment.
         """
         asset_path = LambdaPackaging(
             include_paths=include,
             work_dir=work_dir,
             out_file=file_name,
-            use_docker_non_linux=use_docker_non_linux,
+            use_docker=use_docker,
             create_file_if_exists=create_file_if_exists,
             docker_file=docker_file,
+            docker_tags=docker_tags,
+            docker_platforms=docker_platforms,
         ).package()
         super().__init__(asset_path.as_posix())
 
@@ -85,19 +89,23 @@ class LambdaPackaging:
         work_dir: Path = Path(__file__).resolve().parent,
         out_file: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
-        use_docker_non_linux: bool = True,
+        use_docker: bool = True,
         docker_file: Path = Path(__file__).resolve() / "Dockerfile",
+        docker_tags: list[str] = [],
+        docker_platforms: list[str] = [],
     ) -> None:
         self._include_paths = include_paths
         self._zip_file = out_file.replace(".zip", "")
         self.work_dir = work_dir
-        self.docker_file = docker_file
         self.build_dir = self.work_dir / ".build"
         self.requirements_dir = self.build_dir / "requirements"
         self.layer_requirements_dir = Path("python/lib/python3.9/site-packages")
         self.requirements_txt = self.requirements_dir / "requirements.txt"
-        self.use_docker_non_linux = use_docker_non_linux
         self.create_file_if_exists = create_file_if_exists
+        self.use_docker = use_docker
+        self.docker_file = docker_file
+        self.docker_tags = docker_tags
+        self.docker_platforms = docker_platforms
 
     @property
     def path(self) -> Path:
@@ -137,7 +145,7 @@ class LambdaPackaging:
         return True
 
     def _build_lambda(self) -> None:
-        if is_linux() or self.use_docker_non_linux is False:
+        if self.use_docker is False and is_linux():
             self._build_natively()
         else:
             self._build_in_docker()
@@ -152,11 +160,11 @@ class LambdaPackaging:
         docker.buildx.build(
             self.requirements_dir,
             file=self.docker_file,
-            tags=["testingimage8"],
+            tags=self.docker_tags,
             ssh="default",
             push=False,
             stream_logs=False,
-            platforms=["linux/amd64"],
+            platforms=self.docker_platforms,
             output={"type": "local", "dest": self.build_dir},
         )
 
