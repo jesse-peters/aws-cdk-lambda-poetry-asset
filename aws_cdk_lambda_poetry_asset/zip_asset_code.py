@@ -159,16 +159,11 @@ class LambdaPackaging:
         """
         Build lambda dependencies in a container as-close-as-possible to the actual runtime environment.
         """
-        #   os.environ["DOCKER_BUILDKIT"] = "1"
-        print(self.docker_file)
         if self.docker_cache_dir:
             docker_arguments = {
                 "cache_to": f"type=local,dest={self.docker_cache_dir}",
                 "cache_from": f"type=local,src={self.docker_cache_dir}",
-                "cache": True,
             }
-        else:
-            docker_arguments = {"cache": False}
         docker.buildx.build(
             self.requirements_dir,
             file=self.docker_file,
@@ -176,6 +171,7 @@ class LambdaPackaging:
             ssh="default",
             push=False,
             stream_logs=False,
+            cache=True,
             platforms=self.docker_platforms,
             output={"type": "local", "dest": self.build_dir},
             **docker_arguments,
