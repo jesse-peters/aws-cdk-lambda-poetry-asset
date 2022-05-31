@@ -7,9 +7,9 @@ import uuid
 from pathlib import Path
 from typing import List
 
-import docker
 import requests
 from aws_cdk.aws_lambda import AssetCode
+from python_on_whales import docker
 
 BUILD_IMAGE = "python:3.9.11-bullseye"
 
@@ -34,6 +34,7 @@ class ZipAssetCode(AssetCode):
         file_name: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
         use_docker_non_linux: bool = True,
+        docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
     ) -> None:
         """
         :param include: List of packages to include in the lambda archive.
@@ -48,6 +49,7 @@ class ZipAssetCode(AssetCode):
             out_file=file_name,
             use_docker_non_linux=use_docker_non_linux,
             create_file_if_exists=create_file_if_exists,
+            docker_file=docker_file,
         ).package()
         super().__init__(asset_path.as_posix())
 
@@ -71,6 +73,9 @@ class LambdaPackaging:
         "python-dateutil",
         "s3transfer",
         "setuptools",
+        "opentelemetry",
+        "opentelemetry_api",
+        "opentelemetry_sdk",
     }
     EXCLUDE_FILES = {"*.dist-info", "__pycache__", "*.pyc", "*.pyo"}
 
@@ -81,10 +86,12 @@ class LambdaPackaging:
         out_file: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
         use_docker_non_linux: bool = True,
+        docker_file: Path = Path(__file__).resolve() / "Dockerfile",
     ) -> None:
         self._include_paths = include_paths
         self._zip_file = out_file.replace(".zip", "")
         self.work_dir = work_dir
+        self.docker_file = docker_file
         self.build_dir = self.work_dir / ".build"
         self.requirements_dir = self.build_dir / "requirements"
         self.layer_requirements_dir = Path("python/lib/python3.9/site-packages")
@@ -140,17 +147,17 @@ class LambdaPackaging:
         """
         Build lambda dependencies in a container as-close-as-possible to the actual runtime environment.
         """
-        logging.info("Installing dependencies [running in Docker]...")
-        client = docker.from_env()
-        client.containers.run(
-            image=BUILD_IMAGE,
-            command="/bin/sh -c 'python3.9 -m pip install --target /var/task/ --requirement /var/task/requirements.txt && "
-            "find /var/task -name \\*.so -exec strip \\{{\\}} \\;'",
-            remove=True,
-            volumes={
-                self.requirements_dir.as_posix(): {"bind": "/var/task", "mode": "rw"}
-            },
-            user=0,
+        #   os.environ["DOCKER_BUILDKIT"] = "1"
+        print(self.docker_file)
+        docker.buildx.build(
+            self.requirements_dir,
+            file=self.docker_file,
+            tags=["testingimage8"],
+            ssh="default",
+            push=False,
+            stream_logs=False,
+            platforms=["linux/amd64"],
+            output={"type": "local", "dest": self.build_dir},
         )
 
     def _build_natively(self) -> None:
@@ -202,7 +209,7 @@ class LambdaPackaging:
         """
         logging.info("Removing dependencies bundled in lambda runtime and caches:")
         for pattern in self.EXCLUDE_DEPENDENCIES.union(self.EXCLUDE_FILES):
-            pattern = str(self.requirements_dir / "**" / pattern)
+            pattern = str(self.build_dir / "**" / pattern)
             logging.info(f"    -  {pattern}")
             files = glob.glob(pattern, recursive=True)
             for file_path in files:
