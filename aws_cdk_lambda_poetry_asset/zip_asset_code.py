@@ -37,6 +37,7 @@ class ZipAssetCode(AssetCode):
         docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
         docker_tags: list[str] = [],
         docker_platforms: list[str] = ["linux/amd64"],
+        docker_cache_dir: Path = None,
     ) -> None:
         """
         :param include: List of packages to include in the lambda archive.
@@ -54,6 +55,7 @@ class ZipAssetCode(AssetCode):
             docker_file=docker_file,
             docker_tags=docker_tags,
             docker_platforms=docker_platforms,
+            docker_cache_dir=docker_cache_dir,
         ).package()
         super().__init__(asset_path.as_posix())
 
@@ -93,6 +95,7 @@ class LambdaPackaging:
         docker_file: Path = Path(__file__).resolve() / "Dockerfile",
         docker_tags: list[str] = [],
         docker_platforms: list[str] = [],
+        docker_cache_dir: Path = None,
     ) -> None:
         self._include_paths = include_paths
         self._zip_file = out_file.replace(".zip", "")
@@ -106,6 +109,7 @@ class LambdaPackaging:
         self.docker_file = docker_file
         self.docker_tags = docker_tags
         self.docker_platforms = docker_platforms
+        self.docker_cache_dir = docker_cache_dir
 
     @property
     def path(self) -> Path:
@@ -157,6 +161,14 @@ class LambdaPackaging:
         """
         #   os.environ["DOCKER_BUILDKIT"] = "1"
         print(self.docker_file)
+        if self.docker_cache_dir:
+            docker_arguments = {
+                "cache_to": f"type=local,dest={self.docker_cache_dir}",
+                "cache_from": f"type=local,src={self.docker_cache_dir}",
+                "cache": True,
+            }
+        else:
+            docker_arguments = {"cache": False}
         docker.buildx.build(
             self.requirements_dir,
             file=self.docker_file,
@@ -166,6 +178,7 @@ class LambdaPackaging:
             stream_logs=False,
             platforms=self.docker_platforms,
             output={"type": "local", "dest": self.build_dir},
+            **docker_arguments,
         )
 
     def _build_natively(self) -> None:
