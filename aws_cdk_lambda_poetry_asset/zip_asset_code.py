@@ -5,7 +5,7 @@ import platform
 import shutil
 import uuid
 from pathlib import Path
-from typing import List
+from typing import List, Union
 
 import requests
 from aws_cdk.aws_lambda import AssetCode
@@ -33,11 +33,13 @@ class ZipAssetCode(AssetCode):
         work_dir: Path,
         file_name: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
+        dependencies_to_exclude: List[str] = None,
         use_docker: bool = True,
         docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
         docker_tags: list[str] = [],
         docker_platforms: list[str] = ["linux/amd64"],
         docker_cache_dir: Path = None,
+        docker_progress: Union[str, bool] = False,
     ) -> None:
         """
         :param include: List of packages to include in the lambda archive.
@@ -51,11 +53,13 @@ class ZipAssetCode(AssetCode):
             work_dir=work_dir,
             out_file=file_name,
             use_docker=use_docker,
+            dependencies_to_exclude=dependencies_to_exclude,
             create_file_if_exists=create_file_if_exists,
             docker_file=docker_file,
             docker_tags=docker_tags,
             docker_platforms=docker_platforms,
             docker_cache_dir=docker_cache_dir,
+            docker_progress=docker_progress,
         ).package()
         super().__init__(asset_path.as_posix())
 
@@ -79,9 +83,6 @@ class LambdaPackaging:
         "python-dateutil",
         "s3transfer",
         "setuptools",
-        "opentelemetry",
-        "opentelemetry_api",
-        "opentelemetry_sdk",
     }
     EXCLUDE_FILES = {"*.dist-info", "__pycache__", "*.pyc", "*.pyo"}
 
@@ -91,11 +92,13 @@ class LambdaPackaging:
         work_dir: Path = Path(__file__).resolve().parent,
         out_file: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
+        dependencies_to_exclude: List[str] = None,
         use_docker: bool = True,
         docker_file: Path = Path(__file__).resolve() / "Dockerfile",
         docker_tags: list[str] = [],
         docker_platforms: list[str] = [],
         docker_cache_dir: Path = None,
+        docker_progress: Union[str, bool] = False,
     ) -> None:
         self._include_paths = include_paths
         self._zip_file = out_file.replace(".zip", "")
@@ -110,6 +113,10 @@ class LambdaPackaging:
         self.docker_tags = docker_tags
         self.docker_platforms = docker_platforms
         self.docker_cache_dir = docker_cache_dir
+        self.docker_progress = docker_progress
+        self.dependencies_to_exclude = (
+            dependencies_to_exclude | self.EXCLUDE_DEPENDENCIES
+        )
 
     @property
     def path(self) -> Path:
@@ -173,6 +180,7 @@ class LambdaPackaging:
             cache=True,
             platforms=self.docker_platforms,
             output={"type": "local", "dest": self.build_dir},
+            progress=self.docker_progress,
             **docker_arguments,
         )
 
@@ -224,7 +232,7 @@ class LambdaPackaging:
         Remove caches and dependencies already bundled in the lambda runtime environment.
         """
         logging.info("Removing dependencies bundled in lambda runtime and caches:")
-        for pattern in self.EXCLUDE_DEPENDENCIES.union(self.EXCLUDE_FILES):
+        for pattern in self.dependencies_to_exclude.union(self.EXCLUDE_FILES):
             pattern = str(self.build_dir / "**" / pattern)
             logging.info(f"    -  {pattern}")
             files = glob.glob(pattern, recursive=True)
