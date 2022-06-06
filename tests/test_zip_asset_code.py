@@ -52,6 +52,7 @@ def test_packaging_linux(tmp_path, monkeypatch):
         work_dir=tmp_path,
         use_docker=False,
         out_file="asset.zip",
+        dependencies_to_exclude=["urllib3"],
     ).package()
     assert sorted(next(os.walk(str(tmp_path / ".build")))[1]) == [
         "product_1",
@@ -60,7 +61,7 @@ def test_packaging_linux(tmp_path, monkeypatch):
     ]
     assert sorted(
         next(os.walk(str(tmp_path / ".build/python/lib/python3.9/site-packages")))[1]
-    ) == ["bin", "dateutil", "urllib3"]
+    ) == ["bin", "dateutil"]
     assert asset.exists()
     assert asset.is_file()
     zipfile.ZipFile(asset)
@@ -82,12 +83,9 @@ def test_packaging_not_linux(tmp_path, monkeypatch):
         work_dir=tmp_path,
         out_file="asset.zip",
         docker_platforms=["linux/amd64"],
-        dependencies_to_exclude=["urllib3"],
     ).package()
 
     assert sorted(next(os.walk(str(tmp_path / ".build")))[1]) == [
-        "bin",
-        "dateutil",
         "product_1",
         "product_2",
         "python",

@@ -11,8 +11,6 @@ import requests
 from aws_cdk.aws_lambda import AssetCode
 from python_on_whales import docker
 
-BUILD_IMAGE = "python:3.9.11-bullseye"
-
 
 def is_linux() -> bool:
     """
@@ -34,6 +32,7 @@ class ZipAssetCode(AssetCode):
         file_name: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
         dependencies_to_exclude: list[str] = [],
+        python_version: str = "3.9",
         use_docker: bool = True,
         docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
         docker_tags: list[str] = [],
@@ -55,6 +54,7 @@ class ZipAssetCode(AssetCode):
             out_file=file_name,
             use_docker=use_docker,
             dependencies_to_exclude=dependencies_to_exclude,
+            python_version=python_version,
             create_file_if_exists=create_file_if_exists,
             docker_file=docker_file,
             docker_tags=docker_tags,
@@ -95,6 +95,7 @@ class LambdaPackaging:
         out_file: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
         dependencies_to_exclude: list[str] = [],
+        python_version: str = "3.9",
         use_docker: bool = True,
         docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
         docker_tags: list[str] = [],
@@ -108,7 +109,9 @@ class LambdaPackaging:
         self.work_dir = work_dir
         self.build_dir = self.work_dir / ".build"
         self.requirements_dir = self.build_dir / "requirements"
-        self.layer_requirements_dir = Path("python/lib/python3.9/site-packages")
+        self.layer_requirements_dir = Path(
+            f"python/lib/python{python_version}/site-packages"
+        )
         self.requirements_txt = self.requirements_dir / "requirements.txt"
         self.create_file_if_exists = create_file_if_exists
         self.use_docker = use_docker
@@ -143,7 +146,15 @@ class LambdaPackaging:
             raise Exception("Error during build.", str(ex))
 
     def _prepare_build(self) -> bool:
+        if self.layer_requirements_dir:
+            self.output_dir = self.build_dir / self.layer_requirements_dir
+            self.output_dir.mkdir(parents=True)
+        else:
+            self.output_dir = self.build_dir
+
         shutil.rmtree(self.build_dir, ignore_errors=True)
+        shutil.rmtree(self.output_dir, ignore_errors=True)
+
         self.requirements_dir.mkdir(parents=True)
         if self.path.is_file() and self.create_file_if_exists is False:
             logging.info("File exists, no need to rebuild")
@@ -179,12 +190,13 @@ class LambdaPackaging:
         if self.docker_cache_dir:
             docker_arguments["cache_to"] = f"type=local,dest={self.docker_cache_dir}"
             docker_arguments["cache_from"] = f"type=local,src={self.docker_cache_dir}"
+
         docker.buildx.build(
             self.requirements_dir,
             file=self.docker_file,
             tags=self.docker_tags,
             cache=True,
-            output={"type": "local", "dest": self.build_dir},
+            output={"type": "local", "dest": self.output_dir},
             progress=self.docker_progress,
             **docker_arguments,
         )
@@ -197,8 +209,8 @@ class LambdaPackaging:
         req = self.requirements_dir / "requirements.txt"
         if (
             os.system(
-                f"/bin/sh -c 'python3.9 -m pip install -q --target {self.requirements_dir} --requirement {req} && "
-                f"find {self.requirements_dir} -name \\*.so -exec strip \\{{\\}} \\;'"
+                f"/bin/sh -c 'python3.9 -m pip install -q --target {self.output_dir} --requirement {req} && "
+                f"find {self.output_dir} -name \\*.so -exec strip \\{{\\}} \\;'"
             )
             != 0
         ):
@@ -210,13 +222,9 @@ class LambdaPackaging:
         logging.info(
             f"Moving required dependencies to the build directory: {self.build_dir}"
         )
-        if self.layer_requirements_dir:
-            output_dir = self.build_dir / self.layer_requirements_dir
-            output_dir.mkdir(parents=True)
-        else:
-            output_dir = self.build_dir
+
         for req_dir in self.requirements_dir.glob("*"):
-            shutil.move(str(req_dir), str(output_dir))
+            shutil.move(str(req_dir), str(self.build_dir))
 
         shutil.rmtree(self.requirements_dir, ignore_errors=True)
 
