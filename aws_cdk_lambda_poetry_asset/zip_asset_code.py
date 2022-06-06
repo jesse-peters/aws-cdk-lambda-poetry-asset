@@ -33,13 +33,14 @@ class ZipAssetCode(AssetCode):
         work_dir: Path,
         file_name: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
-        dependencies_to_exclude: set[str] = None,
+        dependencies_to_exclude: list[str] = [],
         use_docker: bool = True,
         docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
         docker_tags: list[str] = [],
         docker_platforms: list[str] = ["linux/amd64"],
         docker_cache_dir: Path = None,
         docker_progress: Union[str, bool] = False,
+        docker_ssh: str = "",
     ) -> None:
         """
         :param include: List of packages to include in the lambda archive.
@@ -60,6 +61,7 @@ class ZipAssetCode(AssetCode):
             docker_platforms=docker_platforms,
             docker_cache_dir=docker_cache_dir,
             docker_progress=docker_progress,
+            docker_ssh=docker_ssh,
         ).package()
         super().__init__(asset_path.as_posix())
 
@@ -92,13 +94,14 @@ class LambdaPackaging:
         work_dir: Path = Path(__file__).resolve().parent,
         out_file: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
-        dependencies_to_exclude: set[str] = None,
+        dependencies_to_exclude: list[str] = [],
         use_docker: bool = True,
-        docker_file: Path = Path(__file__).resolve() / "Dockerfile",
+        docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
         docker_tags: list[str] = [],
         docker_platforms: list[str] = [],
         docker_cache_dir: Path = None,
         docker_progress: Union[str, bool] = False,
+        docker_ssh: str = "",
     ) -> None:
         self._include_paths = include_paths
         self._zip_file = out_file.replace(".zip", "")
@@ -114,8 +117,10 @@ class LambdaPackaging:
         self.docker_platforms = docker_platforms
         self.docker_cache_dir = docker_cache_dir
         self.docker_progress = docker_progress
+        self.docker_ssh = docker_ssh
+
         self.dependencies_to_exclude = (
-            dependencies_to_exclude | self.EXCLUDE_DEPENDENCIES
+            set(dependencies_to_exclude) | self.EXCLUDE_DEPENDENCIES
         )
 
     @property
@@ -167,6 +172,10 @@ class LambdaPackaging:
         Build lambda dependencies in a container as-close-as-possible to the actual runtime environment.
         """
         docker_arguments = {}
+        if self.docker_ssh:
+            docker_arguments["ssh"] = self.docker_ssh
+        if self.docker_platforms:
+            docker_arguments["platforms"] = self.docker_platforms
         if self.docker_cache_dir:
             docker_arguments["cache_to"] = f"type=local,dest={self.docker_cache_dir}"
             docker_arguments["cache_from"] = f"type=local,src={self.docker_cache_dir}"
@@ -174,9 +183,7 @@ class LambdaPackaging:
             self.requirements_dir,
             file=self.docker_file,
             tags=self.docker_tags,
-            ssh="default",
             cache=True,
-            platforms=self.docker_platforms,
             output={"type": "local", "dest": self.build_dir},
             progress=self.docker_progress,
             **docker_arguments,
@@ -217,7 +224,7 @@ class LambdaPackaging:
 
         for include_path in self._include_paths:
             logging.info(f"    -  {(Path.cwd() / include_path).resolve()}")
-            os.system(f"cp -R --parents {include_path} {self.build_dir}")
+            os.system(f"cp -R {include_path} {self.build_dir}")
 
         zip_file_path = (self.work_dir / self._zip_file).resolve()
         logging.info(f"Packaging application into {zip_file_path}.zip")

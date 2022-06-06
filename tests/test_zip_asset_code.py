@@ -6,7 +6,6 @@ from typing import List
 
 import pytest
 import requests
-from python_on_whales import docker
 
 from aws_cdk_lambda_poetry_asset import zip_asset_code
 from aws_cdk_lambda_poetry_asset.zip_asset_code import LambdaPackaging, ZipAssetCode
@@ -46,12 +45,14 @@ def test_packaging_linux(tmp_path, monkeypatch):
         return True
 
     monkeypatch.setattr(zip_asset_code, "is_linux", linux)
+    include_paths = prepare_workspace(tmp_path)
+
     asset = LambdaPackaging(
-        include_paths=(prepare_workspace(tmp_path)),
+        include_paths=include_paths,
         work_dir=tmp_path,
+        use_docker=False,
         out_file="asset.zip",
     ).package()
-
     assert sorted(next(os.walk(str(tmp_path / ".build")))[1]) == [
         "product_1",
         "product_2",
@@ -74,38 +75,25 @@ def test_packaging_not_linux(tmp_path, monkeypatch):
         return False
 
     monkeypatch.setattr(zip_asset_code, "is_linux", not_linux)
+    include_paths = prepare_workspace(tmp_path)
+
     asset = LambdaPackaging(
-        include_paths=(prepare_workspace(tmp_path)),
+        include_paths=include_paths,
         work_dir=tmp_path,
         out_file="asset.zip",
+        docker_platforms=["linux/amd64"],
+        dependencies_to_exclude=["urllib3"],
     ).package()
 
     assert sorted(next(os.walk(str(tmp_path / ".build")))[1]) == [
+        "bin",
+        "dateutil",
         "product_1",
         "product_2",
         "python",
     ]
     assert asset.exists()
     assert asset.is_file()
-
-
-def test_fails_without_docker(tmp_path, monkeypatch):
-    def not_linux() -> bool:
-        return False
-
-    def from_env():
-        raise requests.exceptions.ConnectionError("Can not connect to Docker")
-
-    monkeypatch.setattr(zip_asset_code, "is_linux", not_linux)
-    monkeypatch.setattr(docker.buildx, "build", from_env)
-
-    with pytest.raises(Exception) as ex:
-        LambdaPackaging(
-            include_paths=(prepare_workspace(tmp_path)),
-            work_dir=tmp_path,
-            out_file="asset.zip",
-        ).package()
-    assert "Could not connect to Docker daemon." in str(ex.value)
 
 
 def test_build_error(tmp_path, monkeypatch):
