@@ -4,9 +4,9 @@ import zipfile
 from pathlib import Path
 from typing import List
 
-import docker
 import pytest
 import requests
+from python_on_whales import docker
 
 from aws_cdk_lambda_poetry_asset import zip_asset_code
 from aws_cdk_lambda_poetry_asset.zip_asset_code import LambdaPackaging, ZipAssetCode
@@ -97,7 +97,7 @@ def test_fails_without_docker(tmp_path, monkeypatch):
         raise requests.exceptions.ConnectionError("Can not connect to Docker")
 
     monkeypatch.setattr(zip_asset_code, "is_linux", not_linux)
-    monkeypatch.setattr(docker, "from_env", from_env)
+    monkeypatch.setattr(docker.buildx, "build", from_env)
 
     with pytest.raises(Exception) as ex:
         LambdaPackaging(

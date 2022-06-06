@@ -141,7 +141,7 @@ class LambdaPackaging:
         shutil.rmtree(self.build_dir, ignore_errors=True)
         self.requirements_dir.mkdir(parents=True)
         if self.path.is_file() and self.create_file_if_exists is False:
-            logging.info("Hash matches, no need for a new file")
+            logging.info("File exists, no need to rebuild")
             return False
 
         logging.info(f"Exporting poetry dependencies: {self.requirements_txt}")
@@ -175,8 +175,6 @@ class LambdaPackaging:
             file=self.docker_file,
             tags=self.docker_tags,
             ssh="default",
-            push=False,
-            stream_logs=False,
             cache=True,
             platforms=self.docker_platforms,
             output={"type": "local", "dest": self.build_dir},
@@ -219,7 +217,7 @@ class LambdaPackaging:
 
         for include_path in self._include_paths:
             logging.info(f"    -  {(Path.cwd() / include_path).resolve()}")
-            os.system(f"cp -R {include_path} {self.build_dir}")
+            os.system(f"cp -R --parents {include_path} {self.build_dir}")
 
         zip_file_path = (self.work_dir / self._zip_file).resolve()
         logging.info(f"Packaging application into {zip_file_path}.zip")
