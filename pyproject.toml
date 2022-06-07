@@ -21,7 +21,7 @@ line_length = 88
 [tool.poetry.dependencies]
 python = "^3.9"
 aws-cdk-lib = "2.*.*"
-docker = "^5.0.3"
+python-on-whales = "0.44.*"
 
 [tool.poetry.dev-dependencies]
 pytest = "6.*"

@@ -4,7 +4,6 @@ import zipfile
 from pathlib import Path
 from typing import List
 
-import docker
 import pytest
 import requests
 
@@ -46,12 +45,15 @@ def test_packaging_linux(tmp_path, monkeypatch):
         return True
 
     monkeypatch.setattr(zip_asset_code, "is_linux", linux)
-    asset = LambdaPackaging(
-        include_paths=(prepare_workspace(tmp_path)),
-        work_dir=tmp_path,
-        out_file="asset.zip",
-    ).package()
+    include_paths = prepare_workspace(tmp_path)
 
+    asset = LambdaPackaging(
+        include_paths=include_paths,
+        work_dir=tmp_path,
+        use_docker=False,
+        out_file="asset.zip",
+        dependencies_to_exclude=["urllib3"],
+    ).package()
     assert sorted(next(os.walk(str(tmp_path / ".build")))[1]) == [
         "product_1",
         "product_2",
@@ -59,7 +61,7 @@ def test_packaging_linux(tmp_path, monkeypatch):
     ]
     assert sorted(
         next(os.walk(str(tmp_path / ".build/python/lib/python3.9/site-packages")))[1]
-    ) == ["bin", "dateutil", "urllib3"]
+    ) == ["bin", "dateutil"]
     assert asset.exists()
     assert asset.is_file()
     zipfile.ZipFile(asset)
@@ -74,10 +76,13 @@ def test_packaging_not_linux(tmp_path, monkeypatch):
         return False
 
     monkeypatch.setattr(zip_asset_code, "is_linux", not_linux)
+    include_paths = prepare_workspace(tmp_path)
+
     asset = LambdaPackaging(
-        include_paths=(prepare_workspace(tmp_path)),
+        include_paths=include_paths,
         work_dir=tmp_path,
         out_file="asset.zip",
+        docker_platforms=["linux/amd64"],
     ).package()
 
     assert sorted(next(os.walk(str(tmp_path / ".build")))[1]) == [
@@ -87,25 +92,6 @@ def test_packaging_not_linux(tmp_path, monkeypatch):
     ]
     assert asset.exists()
     assert asset.is_file()
-
-
-def test_fails_without_docker(tmp_path, monkeypatch):
-    def not_linux() -> bool:
-        return False
-
-    def from_env():
-        raise requests.exceptions.ConnectionError("Can not connect to Docker")
-
-    monkeypatch.setattr(zip_asset_code, "is_linux", not_linux)
-    monkeypatch.setattr(docker, "from_env", from_env)
-
-    with pytest.raises(Exception) as ex:
-        LambdaPackaging(
-            include_paths=(prepare_workspace(tmp_path)),
-            work_dir=tmp_path,
-            out_file="asset.zip",
-        ).package()
-    assert "Could not connect to Docker daemon." in str(ex.value)
 
 
 def test_build_error(tmp_path, monkeypatch):

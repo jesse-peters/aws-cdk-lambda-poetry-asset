@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import setuptools
 
 this_directory = Path(__file__).parent

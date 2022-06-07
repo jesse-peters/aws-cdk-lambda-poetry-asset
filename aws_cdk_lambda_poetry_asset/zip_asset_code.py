@@ -5,13 +5,11 @@ import platform
 import shutil
 import uuid
 from pathlib import Path
-from typing import List
+from typing import List, Union
 
-import docker
 import requests
 from aws_cdk.aws_lambda import AssetCode
-
-BUILD_IMAGE = "python:3.9.11-bullseye"
+from python_on_whales import docker
 
 
 def is_linux() -> bool:
@@ -33,21 +31,37 @@ class ZipAssetCode(AssetCode):
         work_dir: Path,
         file_name: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
-        use_docker_non_linux: bool = True,
+        dependencies_to_exclude: list[str] = [],
+        python_version: str = "3.9",
+        use_docker: bool = True,
+        docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
+        docker_tags: list[str] = [],
+        docker_platforms: list[str] = ["linux/amd64"],
+        docker_cache_dir: Path = None,
+        docker_progress: Union[str, bool] = False,
+        docker_ssh: str = "",
     ) -> None:
         """
         :param include: List of packages to include in the lambda archive.
         :param work_dir: Project working directory.
         :param file_name: Lambda ZIP archive name.
         :param create_file_if_exists: Create and overwrite the existing output file.
-        :param use_docker_non_linux: Use docker on a non-linux environment.
+        :param use_docker: Use docker on a non-linux environment.
         """
         asset_path = LambdaPackaging(
             include_paths=include,
             work_dir=work_dir,
             out_file=file_name,
-            use_docker_non_linux=use_docker_non_linux,
+            use_docker=use_docker,
+            dependencies_to_exclude=dependencies_to_exclude,
+            python_version=python_version,
             create_file_if_exists=create_file_if_exists,
+            docker_file=docker_file,
+            docker_tags=docker_tags,
+            docker_platforms=docker_platforms,
+            docker_cache_dir=docker_cache_dir,
+            docker_progress=docker_progress,
+            docker_ssh=docker_ssh,
         ).package()
         super().__init__(asset_path.as_posix())
 
@@ -80,17 +94,37 @@ class LambdaPackaging:
         work_dir: Path = Path(__file__).resolve().parent,
         out_file: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
-        use_docker_non_linux: bool = True,
+        dependencies_to_exclude: list[str] = [],
+        python_version: str = "3.9",
+        use_docker: bool = True,
+        docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
+        docker_tags: list[str] = [],
+        docker_platforms: list[str] = [],
+        docker_cache_dir: Path = None,
+        docker_progress: Union[str, bool] = False,
+        docker_ssh: str = "",
     ) -> None:
         self._include_paths = include_paths
         self._zip_file = out_file.replace(".zip", "")
         self.work_dir = work_dir
         self.build_dir = self.work_dir / ".build"
         self.requirements_dir = self.build_dir / "requirements"
-        self.layer_requirements_dir = Path("python/lib/python3.9/site-packages")
+        self.layer_requirements_dir = Path(
+            f"python/lib/python{python_version}/site-packages"
+        )
         self.requirements_txt = self.requirements_dir / "requirements.txt"
-        self.use_docker_non_linux = use_docker_non_linux
         self.create_file_if_exists = create_file_if_exists
+        self.use_docker = use_docker
+        self.docker_file = docker_file
+        self.docker_tags = docker_tags
+        self.docker_platforms = docker_platforms
+        self.docker_cache_dir = docker_cache_dir
+        self.docker_progress = docker_progress
+        self.docker_ssh = docker_ssh
+
+        self.dependencies_to_exclude = (
+            set(dependencies_to_exclude) | self.EXCLUDE_DEPENDENCIES
+        )
 
     @property
     def path(self) -> Path:
@@ -112,11 +146,19 @@ class LambdaPackaging:
             raise Exception("Error during build.", str(ex))
 
     def _prepare_build(self) -> bool:
-        shutil.rmtree(self.build_dir, ignore_errors=True)
-        self.requirements_dir.mkdir(parents=True)
         if self.path.is_file() and self.create_file_if_exists is False:
-            logging.info("Hash matches, no need for a new file")
+            logging.info("File exists, no need to rebuild")
             return False
+        if self.layer_requirements_dir:
+            self.output_dir = self.build_dir / self.layer_requirements_dir
+            self.output_dir.mkdir(parents=True)
+        else:
+            self.output_dir = self.build_dir
+
+        shutil.rmtree(self.build_dir, ignore_errors=True)
+        shutil.rmtree(self.output_dir, ignore_errors=True)
+
+        self.requirements_dir.mkdir(parents=True)
 
         logging.info(f"Exporting poetry dependencies: {self.requirements_txt}")
         result = os.system(
@@ -130,7 +172,7 @@ class LambdaPackaging:
         return True
 
     def _build_lambda(self) -> None:
-        if is_linux() or self.use_docker_non_linux is False:
+        if self.use_docker is False and is_linux():
             self._build_natively()
         else:
             self._build_in_docker()
@@ -140,17 +182,23 @@ class LambdaPackaging:
         """
         Build lambda dependencies in a container as-close-as-possible to the actual runtime environment.
         """
-        logging.info("Installing dependencies [running in Docker]...")
-        client = docker.from_env()
-        client.containers.run(
-            image=BUILD_IMAGE,
-            command="/bin/sh -c 'python3.9 -m pip install --target /var/task/ --requirement /var/task/requirements.txt && "
-            "find /var/task -name \\*.so -exec strip \\{{\\}} \\;'",
-            remove=True,
-            volumes={
-                self.requirements_dir.as_posix(): {"bind": "/var/task", "mode": "rw"}
-            },
-            user=0,
+        docker_arguments = {}
+        if self.docker_ssh:
+            docker_arguments["ssh"] = self.docker_ssh
+        if self.docker_platforms:
+            docker_arguments["platforms"] = self.docker_platforms
+        if self.docker_cache_dir:
+            docker_arguments["cache_to"] = f"type=local,dest={self.docker_cache_dir}"
+            docker_arguments["cache_from"] = f"type=local,src={self.docker_cache_dir}"
+
+        docker.buildx.build(
+            self.requirements_dir,
+            file=self.docker_file,
+            tags=self.docker_tags,
+            cache=True,
+            output={"type": "local", "dest": self.output_dir},
+            progress=self.docker_progress,
+            **docker_arguments,
         )
 
     def _build_natively(self) -> None:
@@ -161,8 +209,8 @@ class LambdaPackaging:
         req = self.requirements_dir / "requirements.txt"
         if (
             os.system(
-                f"/bin/sh -c 'python3.9 -m pip install -q --target {self.requirements_dir} --requirement {req} && "
-                f"find {self.requirements_dir} -name \\*.so -exec strip \\{{\\}} \\;'"
+                f"/bin/sh -c 'python3.9 -m pip install -q --target {self.output_dir} --requirement {req} && "
+                f"find {self.output_dir} -name \\*.so -exec strip \\{{\\}} \\;'"
             )
             != 0
         ):
@@ -174,13 +222,9 @@ class LambdaPackaging:
         logging.info(
             f"Moving required dependencies to the build directory: {self.build_dir}"
         )
-        if self.layer_requirements_dir:
-            output_dir = self.build_dir / self.layer_requirements_dir
-            output_dir.mkdir(parents=True)
-        else:
-            output_dir = self.build_dir
+
         for req_dir in self.requirements_dir.glob("*"):
-            shutil.move(str(req_dir), str(output_dir))
+            shutil.move(str(req_dir), str(self.build_dir))
 
         shutil.rmtree(self.requirements_dir, ignore_errors=True)
 
@@ -201,8 +245,8 @@ class LambdaPackaging:
         Remove caches and dependencies already bundled in the lambda runtime environment.
         """
         logging.info("Removing dependencies bundled in lambda runtime and caches:")
-        for pattern in self.EXCLUDE_DEPENDENCIES.union(self.EXCLUDE_FILES):
-            pattern = str(self.requirements_dir / "**" / pattern)
+        for pattern in self.dependencies_to_exclude.union(self.EXCLUDE_FILES):
+            pattern = str(self.build_dir / "**" / pattern)
             logging.info(f"    -  {pattern}")
             files = glob.glob(pattern, recursive=True)
             for file_path in files:
