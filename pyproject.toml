@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aws_cdk_lambda_poetry_asset"
-version = "0.2.4"
+version = "0.3.0"
 description = "AWS CDK construct for packaging lambda functions with dependencies"
 license = "MIT"
 authors = ["Jesse Peters <jesse@resist.bot>","Josef Stach <josef.stach@bulletproof.ai>"]

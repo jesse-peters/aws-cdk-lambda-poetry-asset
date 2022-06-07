@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.0 (2022-06-07)
+### Feature
+* Dockerx support ([#7](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/7)) ([`3a9b859`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/3a9b8593068c8d3b61264e9b7e0fd2a2b29673d3))
+
 ## v0.2.4 (2022-03-31)
 ### Fix
 * Requirements need to end up in python dir ([#6](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/6)) ([`4303fb3`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/4303fb381dfd21e34f260297863465428dac1c5c))
