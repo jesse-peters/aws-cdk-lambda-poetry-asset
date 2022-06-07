@@ -146,6 +146,9 @@ class LambdaPackaging:
             raise Exception("Error during build.", str(ex))
 
     def _prepare_build(self) -> bool:
+        if self.path.is_file() and self.create_file_if_exists is False:
+            logging.info("File exists, no need to rebuild")
+            return False
         if self.layer_requirements_dir:
             self.output_dir = self.build_dir / self.layer_requirements_dir
             self.output_dir.mkdir(parents=True)
@@ -156,9 +159,6 @@ class LambdaPackaging:
         shutil.rmtree(self.output_dir, ignore_errors=True)
 
         self.requirements_dir.mkdir(parents=True)
-        if self.path.is_file() and self.create_file_if_exists is False:
-            logging.info("File exists, no need to rebuild")
-            return False
 
         logging.info(f"Exporting poetry dependencies: {self.requirements_txt}")
         result = os.system(
