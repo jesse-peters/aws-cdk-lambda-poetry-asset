@@ -35,7 +35,7 @@ class ZipAssetCode(AssetCode):
         python_version: str = "3.9",
         use_docker: bool = True,
         docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
-        docker_arguments: dict = {str, Any},
+        docker_arguments: dict = {},
     ) -> None:
         """
         :param include: List of packages to include in the lambda archive.
@@ -90,7 +90,7 @@ class LambdaPackaging:
         python_version: str = "3.9",
         use_docker: bool = True,
         docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
-        docker_arguments: dict = {str, Any},
+        docker_arguments: dict = {},
     ) -> None:
         self._include_paths = include_paths
         self._zip_file = out_file.replace(".zip", "")

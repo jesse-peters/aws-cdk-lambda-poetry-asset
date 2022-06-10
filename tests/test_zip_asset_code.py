@@ -82,7 +82,7 @@ def test_packaging_not_linux(tmp_path, monkeypatch):
         include_paths=include_paths,
         work_dir=tmp_path,
         out_file="asset.zip",
-        docker_platforms=["linux/amd64"],
+        docker_arguments={"platforms": ["linux/amd64"]},
     ).package()
 
     assert sorted(next(os.walk(str(tmp_path / ".build")))[1]) == [
