@@ -5,7 +5,7 @@ import platform
 import shutil
 import uuid
 from pathlib import Path
-from typing import List, Union
+from typing import Any, List
 
 import requests
 from aws_cdk.aws_lambda import AssetCode
@@ -35,11 +35,7 @@ class ZipAssetCode(AssetCode):
         python_version: str = "3.9",
         use_docker: bool = True,
         docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
-        docker_tags: list[str] = [],
-        docker_platforms: list[str] = ["linux/amd64"],
-        docker_cache_dir: Path = None,
-        docker_progress: Union[str, bool] = False,
-        docker_ssh: str = "",
+        docker_arguments: dict = {},
     ) -> None:
         """
         :param include: List of packages to include in the lambda archive.
@@ -57,11 +53,7 @@ class ZipAssetCode(AssetCode):
             python_version=python_version,
             create_file_if_exists=create_file_if_exists,
             docker_file=docker_file,
-            docker_tags=docker_tags,
-            docker_platforms=docker_platforms,
-            docker_cache_dir=docker_cache_dir,
-            docker_progress=docker_progress,
-            docker_ssh=docker_ssh,
+            docker_arguments=docker_arguments,
         ).package()
         super().__init__(asset_path.as_posix())
 
@@ -98,11 +90,7 @@ class LambdaPackaging:
         python_version: str = "3.9",
         use_docker: bool = True,
         docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
-        docker_tags: list[str] = [],
-        docker_platforms: list[str] = [],
-        docker_cache_dir: Path = None,
-        docker_progress: Union[str, bool] = False,
-        docker_ssh: str = "",
+        docker_arguments: dict = {},
     ) -> None:
         self._include_paths = include_paths
         self._zip_file = out_file.replace(".zip", "")
@@ -116,12 +104,7 @@ class LambdaPackaging:
         self.create_file_if_exists = create_file_if_exists
         self.use_docker = use_docker
         self.docker_file = docker_file
-        self.docker_tags = docker_tags
-        self.docker_platforms = docker_platforms
-        self.docker_cache_dir = docker_cache_dir
-        self.docker_progress = docker_progress
-        self.docker_ssh = docker_ssh
-
+        self.docker_arguments = docker_arguments
         self.dependencies_to_exclude = (
             set(dependencies_to_exclude) | self.EXCLUDE_DEPENDENCIES
         )
@@ -182,23 +165,12 @@ class LambdaPackaging:
         """
         Build lambda dependencies in a container as-close-as-possible to the actual runtime environment.
         """
-        docker_arguments = {}
-        if self.docker_ssh:
-            docker_arguments["ssh"] = self.docker_ssh
-        if self.docker_platforms:
-            docker_arguments["platforms"] = self.docker_platforms
-        if self.docker_cache_dir:
-            docker_arguments["cache_to"] = f"type=local,dest={self.docker_cache_dir}"
-            docker_arguments["cache_from"] = f"type=local,src={self.docker_cache_dir}"
-
         docker.buildx.build(
             self.requirements_dir,
             file=self.docker_file,
-            tags=self.docker_tags,
             cache=True,
             output={"type": "local", "dest": self.output_dir},
-            progress=self.docker_progress,
-            **docker_arguments,
+            **self.docker_arguments,
         )
 
     def _build_natively(self) -> None:
