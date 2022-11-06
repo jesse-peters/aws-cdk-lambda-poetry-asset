@@ -89,18 +89,18 @@ class LambdaPackaging:
         dependencies_to_exclude: list[str] = [],
         python_version: str = "3.9",
         use_docker: bool = True,
-        docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
+        docker_file: Path = Path(__file__).parent.resolve().joinpath("Dockerfile"),
         docker_arguments: dict = {},
     ) -> None:
         self._include_paths = include_paths
         self._zip_file = out_file.replace(".zip", "")
-        self.work_dir = work_dir
-        self.build_dir = self.work_dir / ".build"
-        self.requirements_dir = self.build_dir / "requirements"
+        self.work_dir = Path(work_dir) if not isinstance(work_dir, Path) else work_dir
+        self.build_dir = self.work_dir.joinpath(".build")
+        self.requirements_dir = self.build_dir.joinpath("requirements")
         self.layer_requirements_dir = Path(
             f"python/lib/python{python_version}/site-packages"
         )
-        self.requirements_txt = self.requirements_dir / "requirements.txt"
+        self.requirements_txt = self.requirements_dir.joinpath("requirements.txt")
         self.create_file_if_exists = create_file_if_exists
         self.use_docker = use_docker
         self.docker_file = docker_file
