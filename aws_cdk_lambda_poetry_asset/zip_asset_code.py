@@ -165,11 +165,13 @@ class LambdaPackaging:
         """
         Build lambda dependencies in a container as-close-as-possible to the actual runtime environment.
         """
+        if "output" not in self.docker_arguments:
+            self.docker_arguments["output"] = {"type": "local", "dest": self.output_dir}
+
         docker.buildx.build(
             self.requirements_dir,
             file=self.docker_file,
             cache=True,
-            output={"type": "local", "dest": self.output_dir},
             **self.docker_arguments,
         )
 
