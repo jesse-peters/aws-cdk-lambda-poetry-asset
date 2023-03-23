@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.2 (2023-03-23)
+### Fix
+* Version ([#12](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/12)) ([`845a6bd`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/845a6bd037877d156a1ec2d27ed416f934adff77))
+
 ## v0.3.1 (2022-06-10)
 ### Fix
 * Allow docker_arguments ([#8](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/8)) ([`8b78ca1`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/8b78ca10fbaf876defe4dacc70b50ae4edd3ffa2))
