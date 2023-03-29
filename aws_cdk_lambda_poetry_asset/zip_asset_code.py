@@ -41,7 +41,7 @@ class ZipAssetCode(AssetCode):
     ) -> None:
         """
         :param include: List of packages to include in the lambda archive.
-        :param work_dir: Projecself.byut working directory.
+        :param work_dir: Project working directory.
         :param file_name: Lambda ZIP archive name.
         :param create_file_if_exists: Create and overwrite the existing output file.
         :param use_docker: Use docker on a non-linux environment.
