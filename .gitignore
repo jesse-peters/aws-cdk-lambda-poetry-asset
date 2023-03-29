@@ -3,3 +3,7 @@
 /.idea/
 __pycache__
 *.zip
+build/
+*.egg-info
+/
+.xml

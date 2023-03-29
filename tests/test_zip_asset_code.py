@@ -1,14 +1,67 @@
 import os
 import platform
+import shutil
+import tempfile
+import unittest
 import zipfile
 from pathlib import Path
 from typing import List
+from unittest.mock import patch
 
 import pytest
 import requests
 
 from aws_cdk_lambda_poetry_asset import zip_asset_code
 from aws_cdk_lambda_poetry_asset.zip_asset_code import LambdaPackaging, ZipAssetCode
+
+
+def not_linux() -> bool:
+    return False
+
+
+class TestRemoveBundledFiles(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.my_class = LambdaPackaging(
+            include_paths=[],
+            work_dir=self.temp_dir,
+            use_docker=False,
+            out_file="asset.zip",
+            dependencies_to_exclude=["urllib3"],
+            include_so_files=False,
+        )
+        self.my_class.build_dir = self.temp_dir
+        self.my_class.dependencies_to_exclude = {"exclude_*.txt"}
+        self.my_class.EXCLUDE_FILES = {"exclude_*.json"}
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    @patch("logging.info")
+    def test_remove_bundled_files(self, mock_logging_info):
+        # Create files and directories to test
+        files_to_exclude = [
+            os.path.join(self.temp_dir, "exclude_1.txt"),
+            os.path.join(self.temp_dir, "exclude_2.txt"),
+            os.path.join(self.temp_dir, "exclude_3.json"),
+        ]
+
+        files_to_keep = [
+            os.path.join(self.temp_dir, "keep_1.txt"),
+            os.path.join(self.temp_dir, "keep_2.json"),
+        ]
+
+        for file in files_to_exclude + files_to_keep:
+            with open(file, "w") as f:
+                f.write("dummy content")
+
+        self.my_class._remove_bundled_files()
+
+        for file in files_to_exclude:
+            self.assertFalse(os.path.exists(file))
+
+        for file in files_to_keep:
+            self.assertTrue(os.path.exists(file))
 
 
 def prepare_workspace(path: Path) -> List[str]:
@@ -18,7 +71,7 @@ def prepare_workspace(path: Path) -> List[str]:
          name = "my_product"
          version = "0.1"
          description = ""
-         authors = ["DevOps <devops@bulletproof.ai>"]
+         authors = ["Stuff <fake@example.fake>"]
 
          [tool.poetry.dependencies]
          python = "^3.9"
@@ -53,6 +106,7 @@ def test_packaging_linux(tmp_path, monkeypatch):
         use_docker=False,
         out_file="asset.zip",
         dependencies_to_exclude=["urllib3"],
+        include_so_files=False,
     ).package()
     assert sorted(next(os.walk(str(tmp_path / ".build")))[1]) == [
         "product_1",
@@ -83,6 +137,7 @@ def test_packaging_not_linux(tmp_path, monkeypatch):
         work_dir=tmp_path,
         out_file="asset.zip",
         docker_arguments={"platforms": ["linux/amd64"]},
+        include_so_files=False,
     ).package()
 
     assert sorted(next(os.walk(str(tmp_path / ".build")))[1]) == [
@@ -134,3 +189,73 @@ def test_zip_asset_code(tmp_path, monkeypatch):
 
     assert not asset_code.is_inline
     assert asset_code.path.endswith("/asset.zip")
+
+
+class TestDeleteFileOrDirectory(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.temp_file = tempfile.mkstemp(dir=self.temp_dir)[1]
+        self.my_class = LambdaPackaging(
+            include_paths=[],
+            work_dir=self.temp_dir,
+            use_docker=False,
+            out_file="asset.zip",
+            dependencies_to_exclude=["urllib3"],
+            include_so_files=False,
+        )
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    def test_delete_directory(self):
+        dir_to_delete = os.path.join(self.temp_dir, "dir_to_delete")
+        os.mkdir(dir_to_delete)
+
+        self.my_class._delete_file_or_directory(dir_to_delete)
+        self.assertFalse(os.path.exists(dir_to_delete))
+
+    def test_delete_file(self):
+        self.my_class._delete_file_or_directory(self.temp_file)
+        self.assertFalse(os.path.exists(self.temp_file))
+
+
+class TestCreateZipArchive(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.my_class = LambdaPackaging(
+            include_paths=[],
+            work_dir=self.temp_dir,
+            use_docker=False,
+            out_file="asset.zip",
+            dependencies_to_exclude=["urllib3"],
+            include_so_files=False,
+        )
+
+        self.my_class.build_dir = self.temp_dir
+        self.my_class.work_dir = tempfile.mkdtemp()
+        self.my_class._zip_file = "my_zip_file"
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+        shutil.rmtree(self.my_class.work_dir)
+
+    @patch("logging.info")
+    def test_create_zip_archive(self, mock_logging_info):
+        # Create a dummy file in the build directory
+        dummy_file_path = os.path.join(self.temp_dir, "dummy_file.txt")
+        with open(dummy_file_path, "w") as f:
+            f.write("dummy content")
+
+        self.my_class._create_zip_archive()
+
+        zip_file_path = os.path.join(
+            self.my_class.work_dir, self.my_class._zip_file + ".zip"
+        )
+        self.assertTrue(os.path.exists(zip_file_path))
+
+        # Check if the ZIP archive contains the expected content
+        with zipfile.ZipFile(zip_file_path, "r") as zip_file:
+            zip_file_content = zip_file.namelist()
+
+        self.assertEqual(len(zip_file_content), 1)
+        self.assertEqual(zip_file_content[0], "dummy_file.txt")

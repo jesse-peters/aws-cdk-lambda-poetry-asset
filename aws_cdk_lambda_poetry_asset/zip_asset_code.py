@@ -3,9 +3,10 @@ import logging
 import os
 import platform
 import shutil
+import subprocess
 import uuid
 from pathlib import Path
-from typing import Any, List
+from typing import List
 
 import requests
 from aws_cdk.aws_lambda import AssetCode
@@ -32,6 +33,7 @@ class ZipAssetCode(AssetCode):
         file_name: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
         dependencies_to_exclude: list[str] = [],
+        include_so_files: bool = False,
         python_version: str = "3.9",
         use_docker: bool = True,
         docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
@@ -39,7 +41,7 @@ class ZipAssetCode(AssetCode):
     ) -> None:
         """
         :param include: List of packages to include in the lambda archive.
-        :param work_dir: Project working directory.
+        :param work_dir: Projecself.byut working directory.
         :param file_name: Lambda ZIP archive name.
         :param create_file_if_exists: Create and overwrite the existing output file.
         :param use_docker: Use docker on a non-linux environment.
@@ -50,6 +52,7 @@ class ZipAssetCode(AssetCode):
             out_file=file_name,
             use_docker=use_docker,
             dependencies_to_exclude=dependencies_to_exclude,
+            include_so_files=include_so_files,
             python_version=python_version,
             create_file_if_exists=create_file_if_exists,
             docker_file=docker_file,
@@ -87,6 +90,7 @@ class LambdaPackaging:
         out_file: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
         dependencies_to_exclude: list[str] = [],
+        include_so_files: bool = False,
         python_version: str = "3.9",
         use_docker: bool = True,
         docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
@@ -94,13 +98,15 @@ class LambdaPackaging:
     ) -> None:
         self._include_paths = include_paths
         self._zip_file = out_file.replace(".zip", "")
-        self.work_dir = work_dir
-        self.build_dir = self.work_dir / ".build"
-        self.requirements_dir = self.build_dir / "requirements"
+        self.work_dir: Path = Path(work_dir)
+        self.build_dir: Path = Path(self.work_dir) / ".build"
+        self.requirements_dir = Path(self.build_dir) / "requirements"
         self.layer_requirements_dir = Path(
             f"python/lib/python{python_version}/site-packages"
         )
+        self.so_dir = Path("lib")
         self.requirements_txt = self.requirements_dir / "requirements.txt"
+        self.include_so_files = include_so_files
         self.create_file_if_exists = create_file_if_exists
         self.use_docker = use_docker
         self.docker_file = docker_file
@@ -129,9 +135,19 @@ class LambdaPackaging:
             raise Exception("Error during build.", str(ex))
 
     def _prepare_build(self) -> bool:
-        if self.path.is_file() and self.create_file_if_exists is False:
+        if self._should_skip_rebuild():
             logging.info("File exists, no need to rebuild")
             return False
+
+        self._setup_build_directories()
+        self._export_poetry_dependencies()
+
+        return True
+
+    def _should_skip_rebuild(self) -> bool:
+        return self.path.is_file() and not self.create_file_if_exists
+
+    def _setup_build_directories(self) -> None:
         if self.layer_requirements_dir:
             self.output_dir = self.build_dir / self.layer_requirements_dir
             self.output_dir.mkdir(parents=True)
@@ -140,19 +156,31 @@ class LambdaPackaging:
 
         shutil.rmtree(self.build_dir, ignore_errors=True)
         shutil.rmtree(self.output_dir, ignore_errors=True)
-
+        self.so_file_dir = self.build_dir / self.so_dir
         self.requirements_dir.mkdir(parents=True)
 
-        logging.info(f"Exporting poetry dependencies: {self.requirements_txt}")
-        result = os.system(
-            f"poetry export --without-hashes --format requirements.txt --output {self.requirements_txt}"
-        )
+        if self.include_so_files:
+            self.so_file_dir.mkdir()
 
-        if result != 0:
+    def _export_poetry_dependencies(self) -> None:
+        logging.info(f"Exporting poetry dependencies: {self.requirements_txt}")
+
+        export_cmd = [
+            "poetry",
+            "export",
+            "--without-hashes",
+            "--format",
+            "requirements.txt",
+            "--output",
+            str(self.requirements_txt),
+        ]
+
+        try:
+            subprocess.run(export_cmd, check=True)
+        except subprocess.CalledProcessError:
             raise EnvironmentError(
                 "Version of your poetry is not compatible - please update to 1.0.0b1 or newer"
             )
-        return True
 
     def _build_lambda(self) -> None:
         if self.use_docker is False and is_linux():
@@ -193,41 +221,60 @@ class LambdaPackaging:
             )
 
     def _package_lambda(self) -> None:
+        self._move_required_dependencies()
+        self._copy_include_resources()
+        self._copy_so_files()
+        self._create_zip_archive()
+
+    def _move_required_dependencies(self) -> None:
         logging.info(
             f"Moving required dependencies to the build directory: {self.build_dir}"
         )
 
-        for req_dir in self.requirements_dir.glob("*"):
+        for req_dir in Path(self.requirements_dir).glob("*"):
             shutil.move(str(req_dir), str(self.build_dir))
 
         shutil.rmtree(self.requirements_dir, ignore_errors=True)
 
+    def _copy_include_resources(self) -> None:
         logging.info("Copying 'include' resources:")
 
         for include_path in self._include_paths:
-            logging.info(f"    -  {(Path.cwd() / include_path).resolve()}")
-            os.system(f"cp -R {include_path} {self.build_dir}")
+            src_path = Path.cwd() / include_path
+            logging.info(f"    -  {src_path.resolve()}")
+            shutil.copytree(src_path, self.build_dir / include_path, dirs_exist_ok=True)
 
-        zip_file_path = (self.work_dir / self._zip_file).resolve()
+    def _copy_so_files(self) -> None:
+        if self.include_so_files:
+            logging.info("Copying .so files:")
+
+            for file_path in glob.glob(f"{self.build_dir}/**/*.so", recursive=True):
+                shutil.copy(file_path, self.so_file_dir / os.path.basename(file_path))
+
+    def _create_zip_archive(self) -> None:
+        zip_file_path = (Path(self.work_dir) / self._zip_file).resolve()
         logging.info(f"Packaging application into {zip_file_path}.zip")
         shutil.make_archive(
             str(zip_file_path), "zip", root_dir=str(self.build_dir), verbose=True
         )
 
     def _remove_bundled_files(self) -> None:
-        """
-        Remove caches and dependencies already bundled in the lambda runtime environment.
-        """
-        logging.info("Removing dependencies bundled in lambda runtime and caches:")
+        """Remove caches and dependencies already bundled in the Lambda runtime environment."""
+        logging.info("Removing dependencies bundled in Lambda runtime and caches:")
+
         for pattern in self.dependencies_to_exclude.union(self.EXCLUDE_FILES):
-            pattern = str(self.build_dir / "**" / pattern)
+            pattern = str(Path(self.build_dir) / "**" / pattern)
             logging.info(f"    -  {pattern}")
-            files = glob.glob(pattern, recursive=True)
-            for file_path in files:
-                try:
-                    if os.path.isdir(file_path):
-                        shutil.rmtree(file_path)
-                    if os.path.isfile(file_path):
-                        os.remove(file_path)
-                except OSError:
-                    logging.error(f"Error while deleting file: {file_path}")
+
+            for file_path in glob.glob(pattern, recursive=True):
+                self._delete_file_or_directory(file_path)
+
+    def _delete_file_or_directory(self, file_path: str) -> None:
+        """Delete a file or directory at the given file path."""
+        try:
+            if os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+            elif os.path.isfile(file_path):
+                os.remove(file_path)
+        except OSError:
+            logging.error(f"Error while deleting file: {file_path}")
