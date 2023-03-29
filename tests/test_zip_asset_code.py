@@ -22,7 +22,7 @@ def not_linux() -> bool:
 class TestRemoveBundledFiles(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
-        self.my_class = LambdaPackaging(
+        self.packaging_class = LambdaPackaging(
             include_paths=[],
             work_dir=self.temp_dir,
             use_docker=False,
@@ -30,9 +30,9 @@ class TestRemoveBundledFiles(unittest.TestCase):
             dependencies_to_exclude=["urllib3"],
             include_so_files=False,
         )
-        self.my_class.build_dir = self.temp_dir
-        self.my_class.dependencies_to_exclude = {"exclude_*.txt"}
-        self.my_class.EXCLUDE_FILES = {"exclude_*.json"}
+        self.packaging_class.build_dir = self.temp_dir
+        self.packaging_class.dependencies_to_exclude = {"exclude_*.txt"}
+        self.packaging_class.EXCLUDE_FILES = {"exclude_*.json"}
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
@@ -55,7 +55,7 @@ class TestRemoveBundledFiles(unittest.TestCase):
             with open(file, "w") as f:
                 f.write("dummy content")
 
-        self.my_class._remove_bundled_files()
+        self.packaging_class._remove_bundled_files()
 
         for file in files_to_exclude:
             self.assertFalse(os.path.exists(file))
@@ -76,6 +76,7 @@ def prepare_workspace(path: Path) -> List[str]:
          [tool.poetry.dependencies]
          python = "^3.9"
          boto3 = "^1.9"
+         requests = "^2.20"
          """
     )
 
@@ -106,6 +107,7 @@ def test_packaging_linux(tmp_path, monkeypatch):
         use_docker=False,
         out_file="asset.zip",
         dependencies_to_exclude=["urllib3"],
+        python_dependencies_to_exclude=["requests"],
         include_so_files=False,
     ).package()
     assert sorted(next(os.walk(str(tmp_path / ".build")))[1]) == [
@@ -195,7 +197,7 @@ class TestDeleteFileOrDirectory(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
         self.temp_file = tempfile.mkstemp(dir=self.temp_dir)[1]
-        self.my_class = LambdaPackaging(
+        self.packaging_class = LambdaPackaging(
             include_paths=[],
             work_dir=self.temp_dir,
             use_docker=False,
@@ -211,18 +213,18 @@ class TestDeleteFileOrDirectory(unittest.TestCase):
         dir_to_delete = os.path.join(self.temp_dir, "dir_to_delete")
         os.mkdir(dir_to_delete)
 
-        self.my_class._delete_file_or_directory(dir_to_delete)
+        self.packaging_class._delete_file_or_directory(dir_to_delete)
         self.assertFalse(os.path.exists(dir_to_delete))
 
     def test_delete_file(self):
-        self.my_class._delete_file_or_directory(self.temp_file)
+        self.packaging_class._delete_file_or_directory(self.temp_file)
         self.assertFalse(os.path.exists(self.temp_file))
 
 
 class TestCreateZipArchive(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
-        self.my_class = LambdaPackaging(
+        self.packaging_class = LambdaPackaging(
             include_paths=[],
             work_dir=self.temp_dir,
             use_docker=False,
@@ -231,13 +233,13 @@ class TestCreateZipArchive(unittest.TestCase):
             include_so_files=False,
         )
 
-        self.my_class.build_dir = self.temp_dir
-        self.my_class.work_dir = tempfile.mkdtemp()
-        self.my_class._zip_file = "my_zip_file"
+        self.packaging_class.build_dir = self.temp_dir
+        self.packaging_class.work_dir = tempfile.mkdtemp()
+        self.packaging_class._zip_file = "my_zip_file"
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
-        shutil.rmtree(self.my_class.work_dir)
+        shutil.rmtree(self.packaging_class.work_dir)
 
     @patch("logging.info")
     def test_create_zip_archive(self, mock_logging_info):
@@ -246,10 +248,10 @@ class TestCreateZipArchive(unittest.TestCase):
         with open(dummy_file_path, "w") as f:
             f.write("dummy content")
 
-        self.my_class._create_zip_archive()
+        self.packaging_class._create_zip_archive()
 
         zip_file_path = os.path.join(
-            self.my_class.work_dir, self.my_class._zip_file + ".zip"
+            self.packaging_class.work_dir, self.packaging_class._zip_file + ".zip"
         )
         self.assertTrue(os.path.exists(zip_file_path))
 
