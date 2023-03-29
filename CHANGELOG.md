@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.0 (2023-03-29)
+### Feature
+* Support so files too ([#13](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/13)) ([`4c32682`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/4c326829cbbea68f9230ab666fc4655f40b5e7d5))
+
 ## v0.3.2 (2023-03-23)
 ### Fix
 * Version ([#12](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/12)) ([`845a6bd`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/845a6bd037877d156a1ec2d27ed416f934adff77))
