@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.0 (2023-03-29)
+### Feature
+* Exclude a package from pyproject ([#14](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/14)) ([`7855b38`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/7855b38f489e7877ae3a9d00f20236a00b468e24))
+
 ## v0.4.0 (2023-03-29)
 ### Feature
 * Support so files too ([#13](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/13)) ([`4c32682`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/4c326829cbbea68f9230ab666fc4655f40b5e7d5))
