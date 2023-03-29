@@ -24,6 +24,8 @@ jobs:
             - name: ↗️ Check out repository
               uses: actions/checkout@v2
 
+            - uses: extractions/setup-just@v1
+
             # Set up Python
             - name: Set up Python env
               uses: actions/setup-python@v2
@@ -40,10 +42,8 @@ jobs:
                   restore-keys: |
                       ${{ runner.os }}-3.9-poetry-
 
-            - name: Bootstrap poetry 🥾
-              run: |
-                  curl -sL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py \
-                    | python - -y
+            - name: Install Poetry
+              uses: snok/install-poetry@v1
 
             - name: Install Python dependencies
               run: |
@@ -51,4 +51,21 @@ jobs:
 
             - name: Run tests
               run: |
-                  poetry run pytest --cov-report term-missing --cov=${CI_PROJECT_NAME//-/_} tests
+                  just ci-test-unit
+
+            - name: Run Format
+              run: |
+                  just ci-format
+
+            - name: Run sort
+              run: |
+                  just ci-sort-imports
+
+            - name: Publish Test Results
+              uses: EnricoMi/publish-unit-test-result-action@v2
+              if: always()
+              with:
+                  check_name: ${{ github.workflow }} Results
+                  comment_title: ${{ github.workflow }} Results
+                  files: |
+                      *.xml
