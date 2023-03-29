@@ -7,7 +7,7 @@ import subprocess
 import uuid
 from pathlib import Path
 from typing import List
-
+import toml
 import requests
 from aws_cdk.aws_lambda import AssetCode
 from python_on_whales import docker
@@ -33,6 +33,7 @@ class ZipAssetCode(AssetCode):
         file_name: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
         dependencies_to_exclude: list[str] = [],
+        python_dependencies_to_exclude: list[str] = [],
         include_so_files: bool = False,
         python_version: str = "3.9",
         use_docker: bool = True,
@@ -95,6 +96,7 @@ class LambdaPackaging:
         use_docker: bool = True,
         docker_file: Path = Path(__file__).parent.resolve() / "Dockerfile",
         docker_arguments: dict = {},
+        python_dependencies_to_exclude: list[str] = [],
     ) -> None:
         self._include_paths = include_paths
         self._zip_file = out_file.replace(".zip", "")
@@ -114,6 +116,7 @@ class LambdaPackaging:
         self.dependencies_to_exclude = (
             set(dependencies_to_exclude) | self.EXCLUDE_DEPENDENCIES
         )
+        self.python_dependencies_to_exclude = python_dependencies_to_exclude
 
     @property
     def path(self) -> Path:
@@ -140,8 +143,9 @@ class LambdaPackaging:
             return False
 
         self._setup_build_directories()
-        self._export_poetry_dependencies()
+        self._remove_packages_from_pyproject()
 
+        self._export_poetry_dependencies()
         return True
 
     def _should_skip_rebuild(self) -> bool:
@@ -161,6 +165,20 @@ class LambdaPackaging:
 
         if self.include_so_files:
             self.so_file_dir.mkdir()
+
+    def _remove_packages_from_pyproject(self):
+        pyproject_path = Path(self.work_dir / "pyproject.toml")
+        with open(pyproject_path, "r") as f:
+            pyproject_data = toml.load(f)
+
+        for package in self.python_dependencies_to_exclude:
+            if package in pyproject_data["tool"]["poetry"]["dependencies"]:
+                del pyproject_data["tool"]["poetry"]["dependencies"][package]
+
+        with open(pyproject_path, "w") as f:
+            toml.dump(pyproject_data, f)
+
+    print("Packages removed successfully.")
 
     def _export_poetry_dependencies(self) -> None:
         logging.info(f"Exporting poetry dependencies: {self.requirements_txt}")
