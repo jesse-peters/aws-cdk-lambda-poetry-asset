@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.2 (2023-03-30)
+### Fix
+* Need to actually include the local packages too ([#16](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/16)) ([`0ba0bc5`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/0ba0bc5dd7fb5566cb1b3658cb348bfe650d5a9c))
+
 ## v0.5.1 (2023-03-29)
 ### Fix
 * Add toml dep ([#15](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/issues/15)) ([`ba528df`](https://github.com/jesse-peters/aws-cdk-lambda-poetry-asset/commit/ba528dfb437f5291499e6159c69a5e79c20d7573))
