@@ -33,8 +33,8 @@ class ZipAssetCode(AssetCode):
         work_dir: Path,
         file_name: str = str(uuid.uuid4())[:8],
         create_file_if_exists: bool = True,
+        include_local_packages: List[str] = [],
         dependencies_to_exclude: list[str] = [],
-        python_dependencies_to_exclude: list[str] = [],
         include_so_files: bool = False,
         python_version: str = "3.9",
         use_docker: bool = True,
@@ -54,6 +54,7 @@ class ZipAssetCode(AssetCode):
             out_file=file_name,
             use_docker=use_docker,
             dependencies_to_exclude=dependencies_to_exclude,
+            include_local_packages=include_local_packages,
             include_so_files=include_so_files,
             python_version=python_version,
             create_file_if_exists=create_file_if_exists,
@@ -90,6 +91,7 @@ class LambdaPackaging:
         include_paths: List[str],
         work_dir: Path = Path(__file__).resolve().parent,
         out_file: str = str(uuid.uuid4())[:8],
+        include_local_packages: List[str] = [],
         create_file_if_exists: bool = True,
         dependencies_to_exclude: list[str] = [],
         include_so_files: bool = False,
@@ -114,10 +116,17 @@ class LambdaPackaging:
         self.use_docker = use_docker
         self.docker_file = docker_file
         self.docker_arguments = docker_arguments
+        self.include_local_packages = include_local_packages
+
         self.dependencies_to_exclude = (
             set(dependencies_to_exclude) | self.EXCLUDE_DEPENDENCIES
         )
-        self.python_dependencies_to_exclude = python_dependencies_to_exclude
+        self.python_dependencies_to_exclude = (
+            python_dependencies_to_exclude + self.include_local_packages
+        )
+
+        self._local_include_paths = []
+        self.pyproject_path = Path(self.work_dir / "pyproject.toml")
 
     @property
     def path(self) -> Path:
@@ -144,6 +153,7 @@ class LambdaPackaging:
             return False
 
         self._setup_build_directories()
+        self._store_include_local_packages()
         self._remove_packages_from_pyproject()
 
         self._export_poetry_dependencies()
@@ -151,6 +161,21 @@ class LambdaPackaging:
 
     def _should_skip_rebuild(self) -> bool:
         return self.path.is_file() and not self.create_file_if_exists
+
+    def _store_include_local_packages(self):
+        with open(self.pyproject_path, "r") as file:
+            pyproject_data = toml.load(file)
+
+        if (
+            "tool" in pyproject_data
+            and "poetry" in pyproject_data["tool"]
+            and "dependencies" in pyproject_data["tool"]["poetry"]
+        ):
+            for dependency, value in pyproject_data["tool"]["poetry"][
+                "dependencies"
+            ].items():
+                if isinstance(value, dict) and "path" in value:
+                    self._local_include_paths.append(value["path"])
 
     def _setup_build_directories(self) -> None:
         if self.layer_requirements_dir:
@@ -168,15 +193,18 @@ class LambdaPackaging:
             self.so_file_dir.mkdir()
 
     def _remove_packages_from_pyproject(self):
-        pyproject_path = Path(self.work_dir / "pyproject.toml")
-        with open(pyproject_path, "r") as f:
+        with open(self.pyproject_path, "r") as f:
             pyproject_data = toml.load(f)
 
         for package in self.python_dependencies_to_exclude:
-            if package in pyproject_data["tool"]["poetry"]["dependencies"]:
+            if (
+                "tool" in pyproject_data
+                and "poetry" in pyproject_data["tool"]
+                and "dependencies" in pyproject_data["tool"]["poetry"]
+            ):
                 del pyproject_data["tool"]["poetry"]["dependencies"][package]
 
-        with open(pyproject_path, "w") as f:
+        with open(self.pyproject_path, "w") as f:
             toml.dump(pyproject_data, f)
 
     print("Packages removed successfully.")
@@ -196,10 +224,8 @@ class LambdaPackaging:
 
         try:
             subprocess.run(export_cmd, check=True)
-        except subprocess.CalledProcessError:
-            raise EnvironmentError(
-                "Version of your poetry is not compatible - please update to 1.0.0b1 or newer"
-            )
+        except subprocess.CalledProcessError as e:
+            raise EnvironmentError(e)
 
     def _build_lambda(self) -> None:
         if self.use_docker is False and is_linux():
@@ -252,6 +278,13 @@ class LambdaPackaging:
 
         for req_dir in Path(self.requirements_dir).glob("*"):
             shutil.move(str(req_dir), str(self.build_dir))
+
+        for local_include_path in self._local_include_paths:
+            shutil.copytree(
+                local_include_path,
+                self.build_dir / local_include_path,
+                dirs_exist_ok=True,
+            )
 
         shutil.rmtree(self.requirements_dir, ignore_errors=True)
 
