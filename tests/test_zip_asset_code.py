@@ -77,6 +77,8 @@ def prepare_workspace(path: Path) -> List[str]:
          python = "^3.9"
          boto3 = "^1.9"
          requests = "^2.20"
+         [tool.poetry.dependencies.fake]
+          path = "./fake/"
          """
     )
 
@@ -87,7 +89,7 @@ def prepare_workspace(path: Path) -> List[str]:
     )
 
     # Create module dirs
-    module_dirs = ["product_1", "product_2"]
+    module_dirs = ["product_1", "product_2", "fake"]
     for m in module_dirs:
         (path / m).mkdir()
 
@@ -105,12 +107,14 @@ def test_packaging_linux(tmp_path, monkeypatch):
         include_paths=include_paths,
         work_dir=tmp_path,
         use_docker=False,
+        include_local_packages=["fake"],
         out_file="asset.zip",
         dependencies_to_exclude=["urllib3"],
         python_dependencies_to_exclude=["requests"],
         include_so_files=False,
     ).package()
     assert sorted(next(os.walk(str(tmp_path / ".build")))[1]) == [
+        "fake",
         "product_1",
         "product_2",
         "python",
@@ -136,6 +140,7 @@ def test_packaging_not_linux(tmp_path, monkeypatch):
 
     asset = LambdaPackaging(
         include_paths=include_paths,
+        include_local_packages=["fake"],
         work_dir=tmp_path,
         out_file="asset.zip",
         docker_arguments={"platforms": ["linux/amd64"]},
@@ -143,6 +148,7 @@ def test_packaging_not_linux(tmp_path, monkeypatch):
     ).package()
 
     assert sorted(next(os.walk(str(tmp_path / ".build")))[1]) == [
+        "fake",
         "product_1",
         "product_2",
         "python",
@@ -160,6 +166,7 @@ def test_build_error(tmp_path, monkeypatch):
     with pytest.raises(Exception) as ex:
         LambdaPackaging(
             include_paths=(prepare_workspace(tmp_path)),
+            include_local_packages=["fake"],
             work_dir=tmp_path,
             out_file="asset.zip",
         ).package()
@@ -186,7 +193,10 @@ def test_zip_asset_code(tmp_path, monkeypatch):
 
     monkeypatch.setattr(zip_asset_code, "is_linux", linux)
     asset_code = ZipAssetCode(
-        work_dir=tmp_path, include=(prepare_workspace(tmp_path)), file_name="asset.zip"
+        work_dir=tmp_path,
+        include=(prepare_workspace(tmp_path)),
+        file_name="asset.zip",
+        include_local_packages=["fake"],
     )
 
     assert not asset_code.is_inline
@@ -200,6 +210,7 @@ class TestDeleteFileOrDirectory(unittest.TestCase):
         self.packaging_class = LambdaPackaging(
             include_paths=[],
             work_dir=self.temp_dir,
+            include_local_packages=["fake"],
             use_docker=False,
             out_file="asset.zip",
             dependencies_to_exclude=["urllib3"],

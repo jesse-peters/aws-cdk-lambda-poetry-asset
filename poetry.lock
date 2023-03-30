@@ -32,14 +32,14 @@ tests-no-zope = ["cloudpickle", "cloudpickle", "hypothesis", "hypothesis", "mypy
 
 [[package]]
 name = "aws-cdk-asset-awscli-v1"
-version = "2.2.122"
+version = "2.2.123"
 description = "A library that contains the AWS CLI for use in Lambda Layers"
 category = "main"
 optional = false
 python-versions = "~=3.7"
 files = [
-    {file = "aws-cdk.asset-awscli-v1-2.2.122.tar.gz", hash = "sha256:df02d53af82ecd3fb1dacb8507534058fae49949a7ddcc21ac1987d6b3e4238f"},
-    {file = "aws_cdk.asset_awscli_v1-2.2.122-py3-none-any.whl", hash = "sha256:21935cab1354d18906a8397894b0446871562558e4b4f5b1901a0cfa3fe23511"},
+    {file = "aws-cdk.asset-awscli-v1-2.2.123.tar.gz", hash = "sha256:50362bcd6fcdde78340687ae04860799e4b9c46ab0bc0f53ff4f221bc6a92fdf"},
+    {file = "aws_cdk.asset_awscli_v1-2.2.123-py3-none-any.whl", hash = "sha256:09ecec576288cc400881e5225a939b24d51c87ca8cbc771aebac12c15cb9e526"},
 ]
 
 [package.dependencies]
@@ -66,14 +66,14 @@ typeguard = ">=2.13.3,<2.14.0"
 
 [[package]]
 name = "aws-cdk-asset-node-proxy-agent-v5"
-version = "2.0.99"
+version = "2.0.100"
 description = "@aws-cdk/asset-node-proxy-agent-v5"
 category = "main"
 optional = false
 python-versions = "~=3.7"
 files = [
-    {file = "aws-cdk.asset-node-proxy-agent-v5-2.0.99.tar.gz", hash = "sha256:5e21c60101dbb1564ebacd3be2012b1434648da18bfaf447791b717b3fcf8eb7"},
-    {file = "aws_cdk.asset_node_proxy_agent_v5-2.0.99-py3-none-any.whl", hash = "sha256:4a878d63f699f400a6a1a63986348b740b3428c8bc6164a1feb41a8cad5a81ac"},
+    {file = "aws-cdk.asset-node-proxy-agent-v5-2.0.100.tar.gz", hash = "sha256:0a4cfbc982eb395a093685f5bed4be42fc47ae946f321e9f0a6c8faa4bd55ba9"},
+    {file = "aws_cdk.asset_node_proxy_agent_v5-2.0.100-py3-none-any.whl", hash = "sha256:1ea91adcb89abbc47be5d72c4bc03e7b036d370940e6d85fd0b9ddd8a59ceaf9"},
 ]
 
 [package.dependencies]
@@ -83,14 +83,14 @@ typeguard = ">=2.13.3,<2.14.0"
 
 [[package]]
 name = "aws-cdk-lib"
-version = "2.71.0"
+version = "2.72.0"
 description = "Version 2 of the AWS Cloud Development Kit library"
 category = "main"
 optional = false
 python-versions = "~=3.7"
 files = [
-    {file = "aws-cdk-lib-2.71.0.tar.gz", hash = "sha256:86405be9740a9678deb5a37821b38b6acaf158577e988d85990cfba6e8a6d8b3"},
-    {file = "aws_cdk_lib-2.71.0-py3-none-any.whl", hash = "sha256:e87fad1469c699618a9d41354ac8c680d44231336600bb8c7341b86f7979aa4a"},
+    {file = "aws-cdk-lib-2.72.0.tar.gz", hash = "sha256:52aad005f1c7142682cb75362dfd27981d95678615c604c763e1c89d758ed557"},
+    {file = "aws_cdk_lib-2.72.0-py3-none-any.whl", hash = "sha256:22e327f05eee7484ae2122192ae90e66b9d23e641f61c9d6e50bff17c6d7382c"},
 ]
 
 [package.dependencies]
@@ -98,7 +98,7 @@ files = [
 "aws-cdk.asset-kubectl-v20" = ">=2.1.1,<3.0.0"
 "aws-cdk.asset-node-proxy-agent-v5" = ">=2.0.77,<3.0.0"
 constructs = ">=10.0.0,<11.0.0"
-jsii = ">=1.77.0,<2.0.0"
+jsii = ">=1.78.1,<2.0.0"
 publication = ">=0.0.3"
 typeguard = ">=2.13.3,<2.14.0"
 
@@ -294,14 +294,14 @@ files = [
 
 [[package]]
 name = "constructs"
-version = "10.1.294"
+version = "10.1.296"
 description = "A programming model for software-defined state"
 category = "main"
 optional = false
 python-versions = "~=3.7"
 files = [
-    {file = "constructs-10.1.294-py3-none-any.whl", hash = "sha256:b9086be63ac9b8edbed34e21e60c3fd0c958979cae4f8c2f6ab7036b4fb7a5db"},
-    {file = "constructs-10.1.294.tar.gz", hash = "sha256:807c27b83e02d4a0e37278873bcee9221c29038292677fdaeb00be2a93c3c47a"},
+    {file = "constructs-10.1.296-py3-none-any.whl", hash = "sha256:f7c546ec91fa45199402f7d683c7da1be14e2b33d60dd506d5cec59a2d74f5ed"},
+    {file = "constructs-10.1.296.tar.gz", hash = "sha256:a50d90b44e27467dc520aa2d080720f592cfdc3492285a72c6547ef4e32bef41"},
 ]
 
 [package.dependencies]
